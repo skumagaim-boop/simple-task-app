@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f5f1" />
+    <title>Today — タスク管理</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">MY WORKSPACE</p>
+          <h1>今日のタスク</h1>
+          <p class="subtitle">小さな一歩を、ひとつずつ。</p>
+        </div>
+        <div class="progress" aria-live="polite">
+          <strong id="progress-count">0 / 0</strong>
+          <span>完了</span>
+        </div>
+      </header>
+
+      <form id="task-form" class="composer">
+        <label class="sr-only" for="task-title">新しいタスク</label>
+        <input id="task-title" maxlength="100" placeholder="新しいタスクを入力…" autocomplete="off" required />
+        <button type="submit"><span aria-hidden="true">＋</span> 追加する</button>
+      </form>
+
+      <section class="task-section" aria-labelledby="open-heading">
+        <div class="section-heading">
+          <div><span class="status-dot open"></span><h2 id="open-heading">未完了</h2></div>
+          <span id="open-count" class="count">0</span>
+        </div>
+        <ul id="open-list" class="task-list"></ul>
+        <div id="open-empty" class="empty-state">
+          <span aria-hidden="true">✓</span>
+          <p>未完了のタスクはありません</p>
+          <small>新しいタスクを追加してみましょう</small>
+        </div>
+      </section>
+
+      <section class="task-section completed-section" aria-labelledby="done-heading">
+        <div class="section-heading">
+          <div><span class="status-dot done"></span><h2 id="done-heading">完了</h2></div>
+          <span id="done-count" class="count">0</span>
+        </div>
+        <ul id="done-list" class="task-list"></ul>
+        <div id="done-empty" class="empty-state compact">
+          <p>完了したタスクはまだありません</p>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="edit-dialog">
+      <form id="edit-form" method="dialog">
+        <h2>タスクを編集</h2>
+        <input id="edit-title" maxlength="100" required />
+        <div class="dialog-actions">
+          <button id="edit-cancel" type="button" class="secondary">キャンセル</button>
+          <button value="default" type="submit">保存する</button>
+        </div>
+      </form>
+    </dialog>
+    <template id="task-template">
+      <li class="task-item">
+        <button class="toggle" type="button"><span class="check">✓</span><span class="sr-only">状態を変更</span></button>
+        <span class="task-text"></span>
+        <div class="task-actions">
+          <button class="icon-button edit" type="button" aria-label="編集">✎</button>
+          <button class="icon-button delete" type="button" aria-label="削除">×</button>
+        </div>
+      </li>
+    </template>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
