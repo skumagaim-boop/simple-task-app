@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f4ef" />
+    <title>Taskly — タスク管理</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="app-header">
+        <a class="brand" href="#" aria-label="Taskly ホーム"><span class="brand-mark">✓</span>Taskly</a>
+        <p>今日やることを、シンプルに。</p>
+      </header>
+
+      <section class="composer" aria-labelledby="composer-title">
+        <h1 id="composer-title">新しいタスク</h1>
+        <form id="create-form" novalidate>
+          <label for="new-title">タイトル <span>必須</span></label>
+          <input id="new-title" name="title" maxlength="100" placeholder="例：週次レポートを作成" required />
+          <label for="new-description">説明 <small>任意</small></label>
+          <textarea id="new-description" name="description" maxlength="500" placeholder="詳細やメモを入力"></textarea>
+          <p class="error" id="create-error" role="alert"></p>
+          <button class="button primary" type="submit">＋ タスクを追加</button>
+        </form>
+      </section>
+
+      <section class="task-section" aria-labelledby="task-heading">
+        <div class="section-heading">
+          <div><p class="eyebrow">MY TASKS</p><h2 id="task-heading">タスク一覧</h2></div>
+          <span id="task-count" class="count"></span>
+        </div>
+        <div id="task-list" class="task-list" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <dialog id="edit-dialog" aria-labelledby="edit-heading">
+      <form id="edit-form" method="dialog" novalidate>
+        <div class="dialog-heading">
+          <div><p class="eyebrow">EDIT TASK</p><h2 id="edit-heading">タスクを編集</h2></div>
+          <button type="button" class="icon-button" id="close-edit" aria-label="編集を閉じる">×</button>
+        </div>
+        <input type="hidden" name="id" />
+        <label for="edit-title">タイトル <span>必須</span></label>
+        <input id="edit-title" name="title" maxlength="100" required />
+        <label for="edit-description">説明 <small>任意</small></label>
+        <textarea id="edit-description" name="description" maxlength="500"></textarea>
+        <p class="error" id="edit-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button type="button" class="button secondary" id="cancel-edit">キャンセル</button>
+          <button type="submit" class="button primary">変更を保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <template id="task-template">
+      <article class="task-card">
+        <button class="complete-button" type="button" aria-label="完了状態を切り替える"><span>✓</span></button>
+        <div class="task-content"><h3></h3><p></p></div>
+        <div class="task-actions">
+          <button class="text-button edit-button" type="button">編集</button>
+          <button class="text-button delete-button" type="button">削除</button>
+        </div>
+      </article>
+    </template>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
