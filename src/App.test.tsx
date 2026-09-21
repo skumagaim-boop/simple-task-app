@@ -32,9 +32,9 @@ describe('主要なタスク操作', () => {
   })
   it('完了／未完了一覧を切り替える', async () => {
     const user = userEvent.setup(); render(<App />); await screen.findByText('未完了タスク')
-    await user.click(screen.getByRole('button', { name: /^完了/ }))
+    await user.click(screen.getByRole('button', { name: /^完了 \d+$/ }))
     expect(screen.getByText('完了タスク')).toBeVisible(); expect(screen.queryByText('未完了タスク')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /^未完了/ }))
+    await user.click(screen.getByRole('button', { name: /^未完了 \d+$/ }))
     expect(screen.getByText('未完了タスク')).toBeVisible(); expect(screen.queryByText('完了タスク')).not.toBeInTheDocument()
   })
   it('空入力と長すぎる入力を検証する', async () => {
@@ -63,5 +63,6 @@ describe('状態とエラー', () => {
     await userEvent.type(screen.getByLabelText('新しいタスク'), '保存できない{Enter}')
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('保存できませんでした'))
     expect(screen.queryByText('保存できない')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('新しいタスク')).toHaveValue('保存できない')
   })
 })

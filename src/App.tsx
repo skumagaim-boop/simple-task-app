@@ -24,29 +24,30 @@ export default function App() {
 
   const commit = async (next: Task[], previous: Task[]) => {
     setTasks(next); setError('')
-    try { await taskStorage.save(next) }
-    catch { setTasks(previous); setError('変更を保存できませんでした。もう一度お試しください。') }
+    try { await taskStorage.save(next); return true }
+    catch { setTasks(previous); setError('変更を保存できませんでした。もう一度お試しください。'); return false }
   }
-  const add = (event: FormEvent) => {
+  const add = async (event: FormEvent) => {
     event.preventDefault()
     const value = title.trim()
     if (!value) { setError('タスク名を入力してください。'); addInput.current?.focus(); return }
     if (value.length > 100) { setError('タスク名は100文字以内で入力してください。'); return }
     const next = [{ id: crypto.randomUUID(), title: value, completed: false, createdAt: Date.now() }, ...tasks]
-    void commit(next, tasks); setTitle(''); addInput.current?.focus()
+    if (await commit(next, tasks)) setTitle('')
+    addInput.current?.focus()
   }
   const toggle = (task: Task) => void commit(tasks.map(item => item.id === task.id ? { ...item, completed: !item.completed } : item), tasks)
   const remove = (task: Task) => {
     if (window.confirm(`「${task.title}」を削除しますか？`)) void commit(tasks.filter(item => item.id !== task.id), tasks)
   }
   const beginEdit = (task: Task) => { setEditing(task); setEditTitle(task.title); setError('') }
-  const saveEdit = (event: FormEvent) => {
+  const saveEdit = async (event: FormEvent) => {
     event.preventDefault(); if (!editing) return
     const value = editTitle.trim()
     if (!value) { setError('タスク名を入力してください。'); return }
     if (value.length > 100) { setError('タスク名は100文字以内で入力してください。'); return }
-    void commit(tasks.map(item => item.id === editing.id ? { ...item, title: value } : item), tasks)
-    setEditing(null)
+    const saved = await commit(tasks.map(item => item.id === editing.id ? { ...item, title: value } : item), tasks)
+    if (saved) setEditing(null)
   }
   const visible = tasks.filter(task => filter === 'all' || (filter === 'completed' ? task.completed : !task.completed))
   const activeCount = tasks.filter(task => !task.completed).length
