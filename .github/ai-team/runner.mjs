@@ -54,7 +54,7 @@ async function request(url, options={}) {
   if(!response.ok) throw Error('HTTP '+response.status+' from '+new URL(url).hostname);
   return response.json();
 }
-export async function main() {
+export async function main({git=(args)=>execFileSync('git',args,{encoding:'utf8'})}={}) {
   const e=process.env, issue=e.TASK_ISSUE, provider=e.AI_PROVIDER, role=e.AI_ROLE;
   validateTask(issue,provider,role);
   const dry=e.DRY_RUN==='true';
@@ -75,13 +75,20 @@ export async function main() {
   const summary=async text=>{if(e.GITHUB_STEP_SUMMARY) await appendFile(e.GITHUB_STEP_SUMMARY,text+'\n');};
   await save();
   try {
-    const tracked=execFileSync('git',['ls-files','-z'],{encoding:'utf8'}).split('\0').filter(Boolean);
+    const metadata=await gh('');
+    const base=metadata.default_branch;
+    const ref=await gh('/git/ref/heads/'+encodeURIComponent(base));
+    const baseSha=ref.object.sha;
+    const checkoutSha=git(['rev-parse','HEAD']).trim();
+    if(checkoutSha!==baseSha) throw Error('Run on the latest default branch before calling the AI');
+    evidence.base_commit=baseSha;
+    const tracked=git(['ls-files','-z']).split('\0').filter(Boolean);
     const context=[];
     let total=0;
     for(const file of tracked.sort()) {
       if(!/^(src|tests|docs)\//.test(file) && !['package.json','README.md','AGENTS.md'].includes(file)) continue;
       if(!/\.(tsx?|jsx?|css|md|json)$/.test(file)) continue;
-      const mode=execFileSync('git',['ls-files','-s','--',file],{encoding:'utf8'}).split(' ')[0];
+      const mode=git(['ls-files','-s','--',file]).split(' ')[0];
       if(mode==='120000'||mode==='160000') continue;
       const content=await readFile(file,'utf8');
       if(content.length>25000 || total+content.length>120000) continue;
@@ -110,13 +117,8 @@ export async function main() {
       return;
     }
     // Use GitHub's object API; never execute model-produced code in this privileged job.
-    const metadata=await gh('');
-    const base=metadata.default_branch;
-    const ref=await gh('/git/ref/heads/'+encodeURIComponent(base));
-    const baseSha=ref.object.sha;
-    // Fail if the task context has drifted since checkout.
-    const checkoutSha=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
-    if(checkoutSha!==baseSha) throw Error('Default branch changed; rerun on its latest commit');
+    const latest=await gh('/git/ref/heads/'+encodeURIComponent(base));
+    if(latest.object.sha!==baseSha) throw Error('Default branch changed; rerun on its latest commit');
     const baseCommit=await gh('/git/commits/'+baseSha);
     const treeEntries=[];
     for(const file of result.files) {
@@ -131,7 +133,7 @@ export async function main() {
     evidence.branch=branch;evidence.commit=commit.sha;await save();
     const pr=await gh('/pulls','POST',{title:('[AI '+provider+'] '+task.title).slice(0,200),head:branch,base,draft:true,body:'Task: #'+issue+'\n\nAI summary (unverified):\n'+result.summary+'\n\nExecution evidence: '+runUrl+'\n\nTests/build run in the separate verify job of this same workflow. No auto-merge. Codex/user review required.'});
     evidence.pr_url=pr.html_url;evidence.changed_files=result.files.map(f=>f.path);evidence.status='draft_pr_created';await save();
-    if(e.GITHUB_OUTPUT) await appendFile(e.GITHUB_OUTPUT,'branch='+branch+'\n');
+    if(e.GITHUB_OUTPUT) await appendFile(e.GITHUB_OUTPUT,'branch='+branch+'\ncommit='+commit.sha+'\n');
     await summary('## AI Team: draft PR created\n'+pr.html_url+'\n\nIndependent verification follows in this workflow. Review and merge remain with Codex/user.');
   } catch(error) {
     evidence.status='failed';evidence.error=error.message;await save();throw error;
