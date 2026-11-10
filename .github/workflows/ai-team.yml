@@ -1,0 +1,93 @@
+name: AI Team
+on:
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: 'Task Issue number'
+        required: true
+        type: string
+      provider:
+        description: 'External AI'
+        type: choice
+        options: [anthropic, gemini]
+        default: anthropic
+      role:
+        description: 'Implementation or independent review'
+        type: choice
+        options: [implement, review]
+        default: implement
+      dry_run:
+        description: 'Validate without calling AI or creating a PR'
+        type: boolean
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: ai-team-${{ inputs.issue }}-${{ inputs.provider }}-${{ inputs.role }}
+  cancel-in-progress: false
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: read
+    outputs:
+      branch: ${{ steps.run.outputs.branch }}
+      commit: ${{ steps.run.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate orchestration
+        run: node --test .github/ai-team/runner.test.mjs
+      - name: Run external agent
+        id: run
+        run: node .github/ai-team/runner.mjs
+        env:
+          TASK_ISSUE: ${{ inputs.issue }}
+          AI_PROVIDER: ${{ inputs.provider }}
+          AI_ROLE: ${{ inputs.role }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          GH_TOKEN: ${{ github.token }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+      - name: Keep execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-team-${{ github.run_id }}
+          path: ai-team-evidence.json
+          if-no-files-found: ignore
+          retention-days: 30
+  verify:
+    needs: agent
+    if: needs.agent.outputs.branch != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.agent.outputs.commit }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then npm ci --ignore-scripts; else npm install --ignore-scripts; fi
+      - name: Test and build
+        run: |
+          npm test
+          npm run build
+      - name: Evidence
+        if: always()
+        run: echo "Verification result ${{ job.status }}; branch ${{ needs.agent.outputs.branch }}" >> "$GITHUB_STEP_SUMMARY"
